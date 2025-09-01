@@ -12,32 +12,106 @@ jobs:
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
+      - name: 🐛 Debug - Log workflow context
+        run: |
+          echo "=== WORKFLOW DEBUG INFO ==="
+          echo "Event: ${{ github.event_name }}"
+          echo "Action: ${{ github.event.action }}"
+          echo "PR Number: ${{ github.event.pull_request.number }}"
+          echo "PR State: ${{ github.event.pull_request.state }}"
+          echo "PR Merged: ${{ github.event.pull_request.merged }}"
+          echo "Target Branch: ${{ github.event.pull_request.base.ref }}"
+          echo "Source Branch: ${{ github.event.pull_request.head.ref }}"
+          echo "Repository: ${{ github.repository }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "=========================="
+
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: 🐛 Debug - Log repository state
+        run: |
+          echo "=== REPOSITORY STATE ==="
+          echo "Current branch: $(git branch --show-current)"
+          echo "All branches:"
+          git branch -a
+          echo "Recent commits:"
+          git log --oneline -5
+          echo "======================"
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
 
+      - name: 🐛 Debug - Log Node.js setup
+        run: |
+          echo "=== NODE.JS DEBUG ==="
+          echo "Node version: $(node --version)"
+          echo "NPM version: $(npm --version)"
+          echo "Yarn version: $(yarn --version 2>/dev/null || echo 'Yarn not available yet')"
+          echo "===================="
+
       - name: 🔧 Enable Corepack and prepare Yarn
         run: |
+          echo "Enabling corepack..."
           corepack enable
+          echo "Preparing yarn..."
           corepack prepare yarn@4.9.1 --activate
+          echo "Yarn version after setup: $(yarn --version)"
 
       - name: 📦 Install dependencies
-        run: yarn install --immutable
+        run: |
+          echo "Installing dependencies with yarn..."
+          yarn install --immutable
+          echo "Dependencies installed successfully"
+
+      - name: 🐛 Debug - Log environment variables
+        run: |
+          echo "=== ENVIRONMENT DEBUG ==="
+          echo "GITHUB_TOKEN exists: $([ -n "$GITHUB_TOKEN" ] && echo "YES" || echo "NO")"
+          echo "GITHUB_REPOSITORY: $GITHUB_REPOSITORY"
+          echo "GITHUB_REF: $GITHUB_REF"
+          echo "Working directory contents:"
+          ls -la
+          echo "Script file exists: $([ -f ".github/scripts/extract-summary.js" ] && echo "YES" || echo "NO")"
+          echo "========================"
 
       - name: Fetch PR comments and extract Coderabbitai summary
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          echo "Starting PR comment extraction..."
           node .github/scripts/extract-summary.js
+          echo "Script execution completed"
+
+      - name: 🐛 Debug - Log generated files
+        run: |
+          echo "=== GENERATED FILES DEBUG ==="
+          echo "Docs directory exists: $([ -d "docs" ] && echo "YES" || echo "NO")"
+          if [ -d "docs" ]; then
+            echo "Docs directory contents:"
+            find docs -type f -name "*.md" | head -10
+          fi
+          echo "Git status:"
+          git status --porcelain
+          echo "============================"
 
       - name: Commit generated docs
         run: |
+          echo "Configuring git..."
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
-          git add docs/changes/
-          git commit -m "chore: add doc from Coderabbitai summary for PR #${{ github.event.pull_request.number }}"
-          git push
+
+          echo "Checking for changes to commit..."
+          if git diff --staged --quiet && git diff --quiet; then
+            echo "No changes to commit"
+          else
+            echo "Adding changes..."
+            git add docs/changes/
+            echo "Committing changes..."
+            git commit -m "chore: add doc from Coderabbitai summary for PR #${{ github.event.pull_request.number }}"
+            echo "Pushing changes..."
+            git push
+            echo "Changes pushed successfully"
+          fi
