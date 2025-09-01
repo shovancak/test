@@ -7,8 +7,8 @@ const token = process.env.GITHUB_TOKEN;
 
 const octokit = new Octokit({ auth: token });
 
-function extractRelevantSections(content) {
-  const sections = [];
+function extractRelevantSections(prDescription, content) {
+  const sections = [prDescription];
 
   // Extract Walkthrough section
   const walkthroughMatch = content.match(
@@ -54,6 +54,8 @@ async function run() {
     }
   );
 
+  const prDescription = pr.data.body;
+
   const coderabbitComment = comments.data.find((c) =>
     c.user.login.includes("coderabbit")
   );
@@ -62,7 +64,10 @@ async function run() {
     return;
   }
 
-  const relevantContent = extractRelevantSections(coderabbitComment.body);
+  const relevantContent = extractRelevantSections(
+    prDescription,
+    coderabbitComment.body
+  );
   if (!relevantContent.trim()) {
     console.log("No relevant sections found in Coderabbit comment.");
     return;
