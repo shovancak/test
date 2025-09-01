@@ -1,0 +1,42 @@
+name: Generate Documentation from Coderabbitai PR Summary
+
+on:
+  pull_request:
+    types: [merged]
+    branches:
+      - master
+
+jobs:
+  generate-docs:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+
+      - name: 🔧 Enable Corepack and prepare Yarn
+        run: |
+          corepack enable
+          corepack prepare yarn@4.9.1 --activate
+
+      - name: 📦 Install dependencies
+        run: yarn install --immutable
+
+      - name: Fetch PR comments and extract Coderabbitai summary
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          node .github/scripts/extract-summary.js
+
+      - name: Commit generated docs
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git add docs/changes/
+          git commit -m "chore: add doc from Coderabbitai summary for PR #${{ github.event.pull_request.number }}"
+          git push
