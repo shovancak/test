@@ -5,6 +5,7 @@ on:
     types: [merged]
     branches:
       - master
+  workflow_dispatch: # Allows manual triggering
 
 jobs:
   generate-docs:
